@@ -19,6 +19,13 @@ class SmsNotificationService
 
     Rails.logger.info("Normalized phone number: #{phone_number}")
 
+    # In development, override recipient to prevent sending to real clients
+    if Rails.env.development? && ENV["DEV_SMS_OVERRIDE_NUMBER"].present?
+      original_number = phone_number
+      phone_number = ENV["DEV_SMS_OVERRIDE_NUMBER"]
+      Rails.logger.warn("🔧 DEV MODE: Redirecting SMS from #{original_number} to #{phone_number}")
+    end
+
     Rails.logger.info("Twilio Config - Account SID: #{ENV['TWILIO_ACCOUNT_SID']&.first(10)}...")
     Rails.logger.info("Twilio Config - From Number: #{ENV['TWILIO_PHONE_NUMBER']}")
 
@@ -45,7 +52,7 @@ class SmsNotificationService
         Rails.logger.info("Using From Number: #{ENV['TWILIO_PHONE_NUMBER']}")
       end
 
-      response = client.messages.create(message_params)
+      response = client.messages.create(**message_params)
       Rails.logger.info("✅ SMS sent successfully!")
       Rails.logger.info("Twilio Message SID: #{response.sid}")
       Rails.logger.info("Status: #{response.status}")

@@ -7,15 +7,23 @@ class CalendarAvailability
   def initialize(calendar, date)
     @calendar = calendar
     @date     = date
-    @timezone = calendar.timezone.presence || "America/Los_Angeles"
+    # Normalize timezone to proper case (e.g., "america/los_angeles" -> "America/Los_Angeles")
+    tz_name = calendar.timezone.presence || "America/Los_Angeles"
+    @timezone = normalize_timezone(tz_name)
   end
 
   # Returns an array of ISO8601 strings representing available start times
   def slots
     require "active_support/time"
 
-    # Interpret the date in the calendar’s timezone
+    # Interpret the date in the calendar's timezone
     tz = ActiveSupport::TimeZone[@timezone]
+
+    unless tz
+      Rails.logger.error("Invalid timezone: #{@timezone}, falling back to UTC")
+      tz = ActiveSupport::TimeZone["UTC"]
+    end
+
     day_start = tz.parse(@date.to_s).change(hour: DEFAULT_START_HOUR, min: 0)
     day_end   = tz.parse(@date.to_s).change(hour: DEFAULT_END_HOUR,   min: 0)
 
@@ -45,6 +53,11 @@ class CalendarAvailability
   end
 
   private
+
+  def normalize_timezone(tz_name)
+    # Convert "america/los_angeles" to "America/Los_Angeles"
+    tz_name.split('/').map(&:capitalize).join('/')
+  end
 
   def overlaps_existing_event?(slot_start, slot_end, events)
     events.any? do |event|
