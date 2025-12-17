@@ -1,4 +1,5 @@
 class CalendarsController < ApplicationController
+  skip_before_action :authenticate_request!, only: [ :public_availability, :public_create_event, :public_delete_last_event ]
   before_action :set_calendar, only: [ :show, :update, :destroy, :availability ]
 
   # GET /calendars/lookup_by_email?email=user@example.com

@@ -1,4 +1,20 @@
 Rails.application.routes.draw do
+  # Authentication routes
+  namespace :auth do
+    post :register
+    post :login
+    post :logout
+    post :refresh
+    post :forgot_password
+    post :reset_password
+    get :me
+  end
+
+  # OAuth routes
+  get "/auth/:provider/callback", to: "oauth#callback"
+  get "/auth/failure", to: "oauth#failure"
+
+  # API routes (protected by authentication)
   get "ai/chat"
   resources :clients
   resources :calendars do
