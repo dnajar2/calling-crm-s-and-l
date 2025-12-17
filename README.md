@@ -304,8 +304,6 @@ Users can then authenticate via: `GET /auth/google_oauth2`
 
 Before deploying to production:
 
-- [x] ✅ Add proper authentication (JWT, OAuth)
-- [x] ✅ Implement API rate limiting
 - [ ] Configure CORS for frontend apps
 - [ ] Add monitoring and error tracking
 - [ ] Move embedding generation to background jobs
