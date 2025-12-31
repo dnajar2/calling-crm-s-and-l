@@ -27,7 +27,9 @@ Rails.application.routes.draw do
     get :availability, on: :member
     resources :events, only: [ :index, :create ]
   end
-  resources :events, only: [ :show, :update, :destroy ]
+  resources :events, only: [ :show, :update, :destroy ] do
+    resources :event_notes
+  end
 
   resources :notes do
     collection do
