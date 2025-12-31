@@ -24,7 +24,13 @@ Rails.application.routes.draw do
       post 'public/:token/events', to: 'calendars#public_create_event', as: :public_create_event
       delete 'public/:token/events/last', to: 'calendars#public_delete_last_event', as: :public_delete_last_event
     end
-    get :availability, on: :member
+    member do
+      get :availability
+      get :token_stats
+      post :regenerate_token
+      post :revoke_token
+      post :extend_token
+    end
     resources :events, only: [ :index, :create ]
   end
   resources :events, only: [ :show, :update, :destroy ] do

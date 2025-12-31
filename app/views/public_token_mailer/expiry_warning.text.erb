@@ -1,0 +1,22 @@
+Your Public Calendar Link is Expiring Soon
+
+Hello <%= @user.name || @user.email %>,
+
+This is a reminder that your public link for <%= @calendar.name %> will expire in <%= @days_remaining %> days on <%= @expires_at.strftime("%B %d, %Y at %I:%M %p %Z") %>.
+
+After this date, anyone using this link will no longer be able to:
+- View your availability
+- Book appointments
+- Access calendar information
+
+What should you do?
+
+If you want to continue sharing this calendar publicly, you have two options:
+
+1. Extend the current link - Keep the same URL and extend its expiry date
+2. Generate a new link - Create a fresh link with a new expiry date
+
+You can manage your public calendar links from your Callab dashboard.
+
+---
+This is an automated message from Callab. Public links expire for security reasons to ensure your calendar information stays protected.

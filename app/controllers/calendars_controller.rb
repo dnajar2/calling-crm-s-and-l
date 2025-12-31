@@ -1,6 +1,8 @@
 class CalendarsController < ApplicationController
+  include PublicTokenValidation
+
   skip_before_action :authenticate_request!, only: [ :public_availability, :public_create_event, :public_delete_last_event ]
-  before_action :set_calendar, only: [ :show, :update, :destroy, :availability ]
+  before_action :set_calendar, only: [ :show, :update, :destroy, :availability, :regenerate_token, :revoke_token, :extend_token, :token_stats ]
 
   # GET /calendars/lookup_by_email?email=user@example.com
   # Returns calendar public tokens for a user by email (for n8n integration)
@@ -75,7 +77,7 @@ class CalendarsController < ApplicationController
   # GET /calendars/public/:token/availability?date=YYYY-MM-DD
   # Public endpoint - no authentication required
   def public_availability
-    calendar = Calendar.find_by!(public_token: params[:token])
+    calendar = find_and_validate_public_token!(params[:token])
     date = params[:date].presence || Date.current
 
     slots = CalendarAvailability.new(calendar, date).slots
@@ -84,7 +86,9 @@ class CalendarsController < ApplicationController
       calendar_name: calendar.name,
       timezone: calendar.timezone,
       date: date.to_s,
-      slots: slots
+      slots: slots,
+      token_expires_at: calendar.public_token_expires_at,
+      token_expiring_soon: calendar.public_token_expiring_soon?
     }
   end
 
@@ -92,7 +96,7 @@ class CalendarsController < ApplicationController
   # Public endpoint - no authentication required
   # Deletes the most recent event for testing purposes
   def public_delete_last_event
-    calendar = Calendar.find_by!(public_token: params[:token])
+    calendar = find_and_validate_public_token!(params[:token])
 
     last_event = calendar.events.order(created_at: :desc).first
 
@@ -120,7 +124,7 @@ class CalendarsController < ApplicationController
   # Public endpoint - no authentication required
   # Creates an event and optionally creates/finds a client
   def public_create_event
-    calendar = Calendar.find_by!(public_token: params[:token])
+    calendar = find_and_validate_public_token!(params[:token])
 
     # Find or create client
     client = find_or_create_client(calendar.user, public_event_params[:client])
@@ -165,6 +169,60 @@ class CalendarsController < ApplicationController
         errors: event.errors.full_messages
       }, status: :unprocessable_entity
     end
+  end
+
+  # POST /calendars/:id/regenerate_token
+  # Regenerates the public token with a new expiry date
+  def regenerate_token
+    expiry_days = params[:expiry_days]&.to_i || Calendar::DEFAULT_TOKEN_EXPIRY_DAYS
+
+    if @calendar.regenerate_public_token!(expiry_days: expiry_days)
+      render json: {
+        success: true,
+        message: "Public token regenerated successfully",
+        calendar: {
+          id: @calendar.id,
+          name: @calendar.name,
+          public_token: @calendar.public_token,
+          public_token_expires_at: @calendar.public_token_expires_at
+        }
+      }
+    else
+      render json: { error: "Failed to regenerate token" }, status: :unprocessable_entity
+    end
+  end
+
+  # POST /calendars/:id/revoke_token
+  # Revokes the current public token
+  def revoke_token
+    @calendar.revoke_public_token!
+    render json: {
+      success: true,
+      message: "Public token revoked successfully"
+    }
+  end
+
+  # POST /calendars/:id/extend_token
+  # Extends the expiry date of the current token
+  def extend_token
+    additional_days = params[:additional_days]&.to_i || Calendar::DEFAULT_TOKEN_EXPIRY_DAYS
+
+    if @calendar.extend_public_token!(additional_days: additional_days)
+      render json: {
+        success: true,
+        message: "Token expiry extended successfully",
+        new_expires_at: @calendar.public_token_expires_at,
+        days_until_expiry: @calendar.days_until_token_expires
+      }
+    else
+      render json: { error: "Failed to extend token" }, status: :unprocessable_entity
+    end
+  end
+
+  # GET /calendars/:id/token_stats
+  # Returns analytics and statistics about the public token
+  def token_stats
+    render json: @calendar.public_token_stats
   end
 
   private

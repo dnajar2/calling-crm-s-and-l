@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_30_195746) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_31_161836) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
@@ -19,10 +19,16 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_30_195746) do
     t.datetime "created_at", null: false
     t.string "name"
     t.string "public_token"
+    t.datetime "public_token_expires_at"
+    t.datetime "public_token_last_used_at"
+    t.datetime "public_token_revoked_at"
+    t.integer "public_token_usage_count", default: 0, null: false
     t.string "timezone"
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["public_token"], name: "index_calendars_on_public_token", unique: true
+    t.index ["public_token_expires_at"], name: "index_calendars_on_public_token_expires_at"
+    t.index ["public_token_revoked_at"], name: "index_calendars_on_public_token_revoked_at", where: "(public_token_revoked_at IS NOT NULL)"
     t.index ["user_id"], name: "index_calendars_on_user_id"
   end
 
