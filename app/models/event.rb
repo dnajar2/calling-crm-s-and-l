@@ -1,6 +1,7 @@
 class Event < ApplicationRecord
   belongs_to :calendar
   belongs_to :client
+  has_many :event_notes, dependent: :destroy
 
   validate :no_overlap
   after_create :send_notifications

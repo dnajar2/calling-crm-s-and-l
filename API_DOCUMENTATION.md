@@ -11,6 +11,7 @@ Callab is an AI-powered scheduling assistant API that helps manage clients, cale
   - [Clients](#clients)
   - [Calendars](#calendars)
   - [Events](#events)
+  - [Event Notes](#event-notes)
   - [Notes](#notes)
   - [AI Assistant](#ai-assistant)
 - [AI Features](#ai-features)
@@ -22,6 +23,7 @@ Callab combines traditional calendar management with AI capabilities:
 
 - **Client Management**: Track clients with contact information
 - **Calendar & Events**: Manage multiple calendars and appointments
+- **Event Notes**: Session notes for events with visibility flags and follow-up tracking
 - **Notes with RAG**: Store preferences with semantic search using pgvector embeddings
 - **AI Assistant**: Claude-powered assistant with tool calling for intelligent scheduling
 
@@ -353,6 +355,182 @@ DELETE /events/:id
 
 **Response:**
 - `204 No Content`
+
+---
+
+### Event Notes
+
+Manage notes associated with specific events. Event notes are separate from general user notes and are designed for recording session details, client interactions, and follow-up tasks.
+
+**Use Case:** Record what happened during an event with a client, track follow-up items, and optionally share notes with clients.
+
+#### List Event Notes
+
+```http
+GET /events/:event_id/event_notes
+```
+
+**Response:**
+```json
+[
+  {
+    "id": 1,
+    "event_id": 1,
+    "user_id": 1,
+    "content": "Client showed significant progress today. Discussed coping strategies for stress management.",
+    "visible_to_client": false,
+    "follow_up_required": true,
+    "occurred_at": "2025-12-11T10:00:00.000Z",
+    "created_at": "2025-12-11T10:45:00.000Z",
+    "updated_at": "2025-12-11T10:45:00.000Z"
+  }
+]
+```
+
+**Note:** Event notes are ordered by `occurred_at` (most recent first), then by `created_at`.
+
+#### Get Event Note
+
+```http
+GET /events/:event_id/event_notes/:id
+```
+
+**Response:**
+```json
+{
+  "id": 1,
+  "event_id": 1,
+  "user_id": 1,
+  "content": "Client showed significant progress today. Discussed coping strategies for stress management.",
+  "visible_to_client": false,
+  "follow_up_required": true,
+  "occurred_at": "2025-12-11T10:00:00.000Z",
+  "created_at": "2025-12-11T10:45:00.000Z",
+  "updated_at": "2025-12-11T10:45:00.000Z"
+}
+```
+
+#### Create Event Note
+
+```http
+POST /events/:event_id/event_notes
+Content-Type: application/json
+
+{
+  "event_note": {
+    "content": "Client showed significant progress today. Discussed coping strategies for stress management.",
+    "visible_to_client": false,
+    "follow_up_required": true,
+    "occurred_at": "2025-12-11T10:00:00Z"
+  }
+}
+```
+
+**Parameters:**
+- `content` (required): The note content
+- `visible_to_client` (optional): Whether this note should be visible to the client. Default: `false`
+- `follow_up_required` (optional): Flag for notes requiring follow-up action. Default: `false`
+- `occurred_at` (optional): Timestamp when the note applies to. Default: current time
+
+**Response:**
+```json
+{
+  "id": 1,
+  "event_id": 1,
+  "user_id": 1,
+  "content": "Client showed significant progress today. Discussed coping strategies for stress management.",
+  "visible_to_client": false,
+  "follow_up_required": true,
+  "occurred_at": "2025-12-11T10:00:00.000Z",
+  "created_at": "2025-12-11T10:45:00.000Z",
+  "updated_at": "2025-12-11T10:45:00.000Z"
+}
+```
+
+**Status Codes:**
+- `201 Created`: Event note created successfully
+- `422 Unprocessable Entity`: Validation errors
+
+#### Update Event Note
+
+```http
+PATCH /events/:event_id/event_notes/:id
+Content-Type: application/json
+
+{
+  "event_note": {
+    "follow_up_required": false
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "id": 1,
+  "event_id": 1,
+  "user_id": 1,
+  "content": "Client showed significant progress today. Discussed coping strategies for stress management.",
+  "visible_to_client": false,
+  "follow_up_required": false,
+  "occurred_at": "2025-12-11T10:00:00.000Z",
+  "created_at": "2025-12-11T10:45:00.000Z",
+  "updated_at": "2025-12-11T11:00:00.000Z"
+}
+```
+
+#### Delete Event Note
+
+```http
+DELETE /events/:event_id/event_notes/:id
+```
+
+**Response:**
+- `204 No Content`
+
+**Common Use Cases:**
+
+1. **Session Notes**: Record details about what happened during a client session
+```json
+{
+  "event_note": {
+    "content": "Discussed career transition. Client expressed concerns about work-life balance.",
+    "visible_to_client": false,
+    "follow_up_required": false
+  }
+}
+```
+
+2. **Follow-up Tasks**: Mark notes that require follow-up
+```json
+{
+  "event_note": {
+    "content": "Need to send client the recommended reading list and schedule follow-up in 2 weeks.",
+    "visible_to_client": false,
+    "follow_up_required": true
+  }
+}
+```
+
+3. **Client-Visible Notes**: Share session summaries with clients
+```json
+{
+  "event_note": {
+    "content": "Today we covered: stress management techniques, breathing exercises, and goal setting for next week.",
+    "visible_to_client": true,
+    "follow_up_required": false
+  }
+}
+```
+
+**Querying Follow-up Notes:**
+
+You can filter notes that require follow-up using the EventNote model scopes:
+```ruby
+# In Rails console or custom endpoints
+event.event_notes.follow_up_required
+event.event_notes.visible_to_client
+```
 
 ---
 
@@ -764,6 +942,9 @@ docker compose run --rm app bin/rails console
 
 **Events**
 - `id`, `calendar_id`, `client_id`, `title`, `description`, `start_time`, `end_time`
+
+**Event Notes**
+- `id`, `event_id`, `user_id`, `content`, `visible_to_client`, `follow_up_required`, `occurred_at`
 
 **Notes**
 - `id`, `user_id`, `content`, `embedding` (vector[768])
