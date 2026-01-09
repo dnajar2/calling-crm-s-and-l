@@ -10,25 +10,45 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_31_161836) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_09_011849) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
 
-  create_table "calendars", force: :cascade do |t|
+  create_table "calendar_blockouts", force: :cascade do |t|
+    t.bigint "calendar_id", null: false
     t.datetime "created_at", null: false
+    t.date "end_date", null: false
+    t.string "reason"
+    t.string "recurring"
+    t.date "start_date", null: false
+    t.datetime "updated_at", null: false
+    t.index ["calendar_id", "end_date"], name: "index_calendar_blockouts_on_calendar_id_and_end_date"
+    t.index ["calendar_id", "start_date"], name: "index_calendar_blockouts_on_calendar_id_and_start_date"
+    t.index ["calendar_id"], name: "index_calendar_blockouts_on_calendar_id"
+  end
+
+  create_table "calendars", force: :cascade do |t|
+    t.integer "buffer_minutes", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.boolean "is_primary", default: false, null: false
+    t.integer "max_advance_days", default: 60, null: false
+    t.integer "min_advance_hours", default: 0, null: false
     t.string "name"
     t.string "public_token"
     t.datetime "public_token_expires_at"
     t.datetime "public_token_last_used_at"
     t.datetime "public_token_revoked_at"
     t.integer "public_token_usage_count", default: 0, null: false
+    t.integer "slot_duration_minutes", default: 30, null: false
     t.string "timezone"
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
+    t.jsonb "working_hours", default: {"friday"=>{"ranges"=>[{"end"=>"17:00", "start"=>"09:00"}], "enabled"=>true}, "monday"=>{"ranges"=>[{"end"=>"17:00", "start"=>"09:00"}], "enabled"=>true}, "sunday"=>{"ranges"=>[], "enabled"=>false}, "tuesday"=>{"ranges"=>[{"end"=>"17:00", "start"=>"09:00"}], "enabled"=>true}, "saturday"=>{"ranges"=>[], "enabled"=>false}, "thursday"=>{"ranges"=>[{"end"=>"17:00", "start"=>"09:00"}], "enabled"=>true}, "wednesday"=>{"ranges"=>[{"end"=>"17:00", "start"=>"09:00"}], "enabled"=>true}}, null: false
     t.index ["public_token"], name: "index_calendars_on_public_token", unique: true
     t.index ["public_token_expires_at"], name: "index_calendars_on_public_token_expires_at"
     t.index ["public_token_revoked_at"], name: "index_calendars_on_public_token_revoked_at", where: "(public_token_revoked_at IS NOT NULL)"
+    t.index ["user_id", "is_primary"], name: "index_calendars_on_user_id_and_is_primary"
     t.index ["user_id"], name: "index_calendars_on_user_id"
   end
 
@@ -90,6 +110,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_31_161836) do
     t.string "refresh_token"
     t.datetime "reset_password_sent_at"
     t.string "reset_password_token"
+    t.string "timezone", default: "UTC", null: false
     t.string "uid"
     t.datetime "updated_at", null: false
     t.index ["email"], name: "index_users_on_email", unique: true
@@ -97,6 +118,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_31_161836) do
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end
 
+  add_foreign_key "calendar_blockouts", "calendars"
   add_foreign_key "calendars", "users"
   add_foreign_key "clients", "users"
   add_foreign_key "event_notes", "events"

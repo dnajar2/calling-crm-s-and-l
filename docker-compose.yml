@@ -33,6 +33,8 @@ services:
       SMTP_USERNAME: ${SMTP_USERNAME}
       SMTP_PASSWORD: ${SMTP_PASSWORD}
       SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL}
+      FRONTEND_URL: "http://localhost:5175/"
+      APP_NAME: "Sugar and Leather Scheduler"
     depends_on:
       - db
     stdin_open: true

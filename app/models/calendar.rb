@@ -1,14 +1,27 @@
 class Calendar < ApplicationRecord
   belongs_to :user
   has_many :events, dependent: :destroy
+  has_many :blockouts, class_name: 'CalendarBlockout', dependent: :destroy
 
   # Constants for token management
   DEFAULT_TOKEN_EXPIRY_DAYS = 30
   TOKEN_EXPIRY_WARNING_DAYS = 7
   MAX_TOKEN_USAGE_PER_HOUR = 100
 
+  # Constants for business rules
+  VALID_SLOT_DURATIONS = [15, 30, 45, 60, 90, 120].freeze
+  VALID_BUFFER_TIMES = [0, 5, 10, 15, 30, 60].freeze
+  VALID_RECURRING_TYPES = ['weekly', 'monthly', nil].freeze
+
   # Validations
   validates :public_token, uniqueness: true, allow_nil: true
+  validates :is_primary, inclusion: { in: [true, false] }
+  validates :slot_duration_minutes, inclusion: { in: VALID_SLOT_DURATIONS }
+  validates :buffer_minutes, numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 120 }
+  validates :min_advance_hours, numericality: { greater_than_or_equal_to: 0 }
+  validates :max_advance_days, numericality: { greater_than_or_equal_to: 1, less_than_or_equal_to: 365 }
+  validate :only_one_primary_per_user, if: :is_primary?
+  validate :working_hours_structure
 
   # Scopes
   scope :with_active_tokens, -> { where("public_token IS NOT NULL AND public_token_revoked_at IS NULL AND (public_token_expires_at IS NULL OR public_token_expires_at > ?)", Time.current) }
@@ -17,6 +30,7 @@ class Calendar < ApplicationRecord
 
   # Generate a unique public token before creating the calendar
   before_create :generate_public_token
+  before_save :ensure_one_primary_per_user, if: :is_primary_changed?
 
   # Token status methods
   def public_token_active?
@@ -133,5 +147,54 @@ class Calendar < ApplicationRecord
     return "expired" if public_token_expired?
     return "active" if public_token_active?
     "inactive"
+  end
+
+  def only_one_primary_per_user
+    if is_primary? && user.calendars.where(is_primary: true).where.not(id: id).exists?
+      errors.add(:is_primary, "can only have one primary calendar")
+    end
+  end
+
+  def ensure_one_primary_per_user
+    if is_primary?
+      user.calendars.where.not(id: id).update_all(is_primary: false)
+    end
+  end
+
+  def working_hours_structure
+    return if working_hours.blank?
+
+    required_days = %w[monday tuesday wednesday thursday friday saturday sunday]
+    
+    unless working_hours.is_a?(Hash)
+      errors.add(:working_hours, "must be a hash")
+      return
+    end
+
+    required_days.each do |day|
+      unless working_hours.key?(day) || working_hours.key?(day.to_sym)
+        errors.add(:working_hours, "missing #{day}")
+        return
+      end
+
+      day_config = working_hours[day] || working_hours[day.to_sym]
+      
+      unless day_config.is_a?(Hash) && day_config.key?('enabled') && day_config.key?('ranges')
+        errors.add(:working_hours, "#{day} must have 'enabled' and 'ranges' keys")
+        return
+      end
+
+      unless day_config['ranges'].is_a?(Array)
+        errors.add(:working_hours, "#{day} ranges must be an array")
+        return
+      end
+
+      day_config['ranges'].each do |range|
+        unless range.is_a?(Hash) && range.key?('start') && range.key?('end')
+          errors.add(:working_hours, "#{day} ranges must have 'start' and 'end' keys")
+          return
+        end
+      end
+    end
   end
 end

@@ -8,6 +8,8 @@ Rails.application.routes.draw do
     post :forgot_password
     post :reset_password
     get :me
+    patch :update
+    get :timezones
   end
 
   # OAuth routes
@@ -19,7 +21,7 @@ Rails.application.routes.draw do
   resources :clients
   resources :calendars do
     collection do
-      get :lookup_by_email
+      get :primary
       get 'public/:token/availability', to: 'calendars#public_availability', as: :public_availability
       post 'public/:token/events', to: 'calendars#public_create_event', as: :public_create_event
       delete 'public/:token/events/last', to: 'calendars#public_delete_last_event', as: :public_delete_last_event
@@ -32,6 +34,7 @@ Rails.application.routes.draw do
       post :extend_token
     end
     resources :events, only: [ :index, :create ]
+    resources :blockouts, controller: 'calendar_blockouts'
   end
   resources :events, only: [ :show, :update, :destroy ] do
     resources :event_notes

@@ -1,32 +1,38 @@
 class CalendarsController < ApplicationController
   include PublicTokenValidation
 
-  skip_before_action :authenticate_request!, only: [ :public_availability, :public_create_event, :public_delete_last_event ]
+  skip_before_action :authenticate_request!, only: [ :public_availability, :public_create_event, :public_delete_last_event, :primary ]
   before_action :set_calendar, only: [ :show, :update, :destroy, :availability, :regenerate_token, :revoke_token, :extend_token, :token_stats ]
 
-  # GET /calendars/lookup_by_email?email=user@example.com
-  # Returns calendar public tokens for a user by email (for n8n integration)
-  def lookup_by_email
-    email = params[:email]
-    return render json: { error: "Email parameter required" }, status: :bad_request if email.blank?
+  # GET /calendars/primary?email=user@example.com
+  # Returns the primary calendar for a user by email (for n8n integration and authenticated users)
+  # If email param is provided, looks up user by email (no auth required)
+  # If no email param, uses current_user (auth required)
+  def primary
+    if params[:email].present?
+      # External lookup by email (no authentication required)
+      user = User.find_by(email: params[:email])
+      return render json: { error: "User not found" }, status: :not_found unless user
+    else
+      # Authenticated user lookup
+      user = current_user
+    end
 
-    user = User.find_by(email: email)
-    return render json: { error: "User not found" }, status: :not_found unless user
-
-    calendars = user.calendars.map do |calendar|
-      {
+    calendar = user.calendars.find_by(is_primary: true)
+    
+    if calendar
+      render json: {
         id: calendar.id,
         name: calendar.name,
         public_token: calendar.public_token,
-        timezone: calendar.timezone
+        public_url: "#{ENV['FRONTEND_URL']}calendar/#{calendar.public_token}",
+        timezone: calendar.timezone,
+        is_primary: calendar.is_primary,
+        created_at: calendar.created_at
       }
+    else
+      render json: { error: "No primary calendar found" }, status: :not_found
     end
-
-    render json: {
-      email: user.email,
-      user_name: user.name,
-      calendars: calendars
-    }
   end
 
   # GET /calendars
@@ -71,7 +77,18 @@ class CalendarsController < ApplicationController
 
     slots = CalendarAvailability.new(@calendar, date).slots
 
-    render json: { date: date.to_s, slots: slots }
+    render json: {
+      calendar_name: @calendar.name,
+      timezone: @calendar.user.timezone || "UTC",
+      date: date.to_s,
+      slots: slots,
+      settings: {
+        slot_duration_minutes: @calendar.slot_duration_minutes,
+        buffer_minutes: @calendar.buffer_minutes,
+        min_advance_hours: @calendar.min_advance_hours,
+        max_advance_days: @calendar.max_advance_days
+      }
+    }
   end
 
   # GET /calendars/public/:token/availability?date=YYYY-MM-DD
@@ -84,7 +101,7 @@ class CalendarsController < ApplicationController
 
     render json: {
       calendar_name: calendar.name,
-      timezone: calendar.timezone,
+      timezone: calendar.user.timezone || "UTC",
       date: date.to_s,
       slots: slots,
       token_expires_at: calendar.public_token_expires_at,
@@ -129,13 +146,18 @@ class CalendarsController < ApplicationController
     # Find or create client
     client = find_or_create_client(calendar.user, public_event_params[:client])
 
+    # Parse times in user's timezone
+    user_timezone = calendar.user.timezone || "UTC"
+    start_time = parse_time_in_timezone(public_event_params[:start_time], user_timezone)
+    end_time = parse_time_in_timezone(public_event_params[:end_time], user_timezone)
+
     # Create event
     event = calendar.events.build(
       client: client,
       title: public_event_params[:title],
       description: public_event_params[:description],
-      start_time: public_event_params[:start_time],
-      end_time: public_event_params[:end_time]
+      start_time: start_time,
+      end_time: end_time
     )
 
     if event.save
@@ -291,11 +313,28 @@ class CalendarsController < ApplicationController
     )
   end
 
+  def parse_time_in_timezone(time_string, timezone)
+    return nil if time_string.blank?
+    
+    # Parse the time string in the user's timezone and convert to UTC
+    Time.use_zone(timezone) do
+      Time.zone.parse(time_string)
+    end
+  end
+
   def set_calendar
     @calendar = current_user.calendars.find(params[:id])
   end
 
   def calendar_params
-    params.require(:calendar).permit(:name)
+    params.require(:calendar).permit(
+      :name, 
+      :is_primary,
+      :slot_duration_minutes,
+      :buffer_minutes,
+      :min_advance_hours,
+      :max_advance_days,
+      working_hours: {}
+    )
   end
 end
