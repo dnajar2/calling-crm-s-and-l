@@ -5,8 +5,11 @@ Your appointment has been confirmed!
 Event Details:
 Title: <%= @event.title %>
 <% if @event.description.present? %>Description: <%= @event.description %><% end %>
-Date & Time: <%= @event.start_time.strftime('%A, %B %d, %Y at %I:%M %p') %>
-End Time: <%= @event.end_time.strftime('%I:%M %p') %>
+<% user_tz = @user.timezone || 'UTC' %>
+<% start_in_tz = @event.start_time.in_time_zone(user_tz) %>
+<% end_in_tz = @event.end_time.in_time_zone(user_tz) %>
+Date & Time: <%= start_in_tz.strftime('%A, %B %d, %Y at %I:%M %p') %> <%= start_in_tz.strftime('%Z') %>
+End Time: <%= end_in_tz.strftime('%I:%M %p') %>
 
 <% if @user.name.present? %>With: <%= @user.name %><% end %>
 

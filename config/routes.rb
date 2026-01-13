@@ -18,7 +18,11 @@ Rails.application.routes.draw do
 
   # API routes (protected by authentication)
   get "ai/chat"
-  resources :clients
+  resources :clients do
+    collection do
+      get :recent
+    end
+  end
   resources :calendars do
     collection do
       get :primary
@@ -37,6 +41,11 @@ Rails.application.routes.draw do
     resources :blockouts, controller: 'calendar_blockouts'
   end
   resources :events, only: [ :show, :update, :destroy ] do
+    collection do
+      get :dashboard
+      get :today
+      get :upcoming
+    end
     resources :event_notes
   end
 

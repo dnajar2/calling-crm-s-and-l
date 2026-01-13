@@ -30,9 +30,10 @@ class User < ApplicationRecord
   end
 
   def generate_password_reset_token
-    self.reset_password_token = SecureRandom.urlsafe_base64(32)
-    self.reset_password_sent_at = Time.current
-    save!
+    update_columns(
+      reset_password_token: SecureRandom.urlsafe_base64(32),
+      reset_password_sent_at: Time.current
+    )
   end
 
   def password_reset_valid?
