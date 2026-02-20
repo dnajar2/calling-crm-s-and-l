@@ -39,6 +39,31 @@ class ClientsController < ApplicationController
     head :no_content
   end
 
+  # GET /clients/recent
+  # Returns recently created or updated clients for dashboard
+  def recent
+    clients = current_user.clients
+                         .order(updated_at: :desc)
+                         .limit(6)
+    
+    formatted_clients = clients.map do |client|
+      # Get first letter of name for avatar
+      initial = client.name.present? ? client.name[0].upcase : '?'
+      
+      {
+        id: client.id,
+        name: client.name,
+        email: client.email,
+        phone: client.phone,
+        initial: initial,
+        created_at: client.created_at,
+        updated_at: client.updated_at
+      }
+    end
+    
+    render json: formatted_clients
+  end
+
   private
 
   def set_client

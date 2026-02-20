@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta content='text/html; charset=UTF-8' http-equiv='Content-Type' />
+  </head>
+  <body>
+    <h2>Your Public Calendar Link Has Been Regenerated</h2>
+
+    <p>Hello <%= @user.name || @user.email %>,</p>
+
+    <p>
+      Your public link for <strong><%= @calendar.name %></strong> has been successfully regenerated.
+    </p>
+
+    <h3>Important Information:</h3>
+
+    <ul>
+      <li>The old link is no longer valid</li>
+      <li>Your new link expires on: <strong><%= @new_expires_at.strftime("%B %d, %Y at %I:%M %p %Z") %></strong></li>
+      <li>Update any shared links with the new URL</li>
+    </ul>
+
+    <p>
+      <strong>New Public URL:</strong><br/>
+      <code style="background: #f4f4f4; padding: 8px; display: block; margin-top: 8px;">
+        <%= @public_url %>
+      </code>
+    </p>
+
+    <p>
+      Share this link with anyone who needs to view your calendar availability or book appointments.
+    </p>
+
+    <hr/>
+
+    <p style="color: #666; font-size: 12px;">
+      This is an automated confirmation from Callab. If you did not request this change,
+      please contact support immediately.
+    </p>
+  </body>
+</html>

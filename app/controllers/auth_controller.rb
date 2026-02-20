@@ -1,5 +1,5 @@
 class AuthController < ApplicationController
-  skip_before_action :authenticate_request!, only: [ :register, :login, :refresh, :forgot_password, :reset_password ]
+  skip_before_action :authenticate_request!, only: [ :register, :login, :refresh, :forgot_password, :reset_password, :timezones ]
 
   # POST /auth/register
   def register
@@ -75,7 +75,7 @@ class AuthController < ApplicationController
     if user
       user.generate_password_reset_token
       # TODO: Send password reset email
-      # AuthMailer.password_reset(user).deliver_later
+      AuthMailer.password_reset(user).deliver_later
       render json: { message: "Password reset instructions sent to your email" }
     else
       # Don't reveal if email exists for security
@@ -103,14 +103,43 @@ class AuthController < ApplicationController
     render json: { user: user_response(current_user) }
   end
 
+  # PATCH /auth/update
+  def update
+    if current_user.update(update_params)
+      render json: {
+        message: "User updated successfully",
+        user: user_response(current_user)
+      }
+    else
+      render json: { errors: current_user.errors.full_messages }, status: :unprocessable_entity
+    end
+  end
+
+  # GET /auth/timezones
+  def timezones
+    timezones = ActiveSupport::TimeZone.all.map do |tz|
+      {
+        name: tz.name,
+        offset: tz.formatted_offset,
+        utc_offset: tz.utc_offset / 3600.0
+      }
+    end
+
+    render json: { timezones: timezones }
+  end
+
   private
 
   def register_params
-    params.require(:user).permit(:name, :email, :password)
+    params.require(:user).permit(:name, :email, :password, :timezone)
   end
 
   def login_params
     params.require(:user).permit(:email, :password)
+  end
+
+  def update_params
+    params.require(:user).permit(:name, :email, :timezone, :password)
   end
 
   def generate_tokens(user)
@@ -126,7 +155,17 @@ class AuthController < ApplicationController
       name: user.name,
       email: user.email,
       email_verified: user.email_verified,
-      created_at: user.created_at
+      timezone: user.timezone,
+      created_at: user.created_at,
+      calendars: user.calendars.map do |calendar|
+        {
+          id: calendar.id,
+          public_token: calendar.public_token,
+          public_url: "#{ENV['FRONTEND_URL']}calendar/#{calendar.public_token}",
+          is_primary: calendar.is_primary,
+          created_at: calendar.created_at
+        }
+      end
     }
   end
 

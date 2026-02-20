@@ -97,8 +97,12 @@ class SmsNotificationService
   end
 
   def self.build_message(event)
+    user_tz = event.calendar.user.timezone || 'UTC'
+    
     time_info = if event.start_time.present?
-      event.start_time.strftime('%B %d, %Y at %I:%M %p')
+      start_in_tz = event.start_time.in_time_zone(user_tz)
+      end_in_tz = event.end_time.in_time_zone(user_tz)
+      "#{start_in_tz.strftime('%B %d, %Y')}\nTime: #{start_in_tz.strftime('%I:%M %p')} - #{end_in_tz.strftime('%I:%M %p')} #{start_in_tz.strftime('%Z')}"
     else
       "Time TBD"
     end

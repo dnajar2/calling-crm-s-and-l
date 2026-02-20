@@ -25,8 +25,11 @@
         <% if @event.description.present? %>
           <p><%= @event.description %></p>
         <% end %>
-        <p><strong>📅 Date:</strong> <%= @event.start_time.strftime('%A, %B %d, %Y') %></p>
-        <p><strong>🕐 Time:</strong> <%= @event.start_time.strftime('%I:%M %p') %> - <%= @event.end_time.strftime('%I:%M %p') %></p>
+        <% user_tz = @user.timezone || 'UTC' %>
+        <% start_in_tz = @event.start_time.in_time_zone(user_tz) %>
+        <% end_in_tz = @event.end_time.in_time_zone(user_tz) %>
+        <p><strong>📅 Date:</strong> <%= start_in_tz.strftime('%A, %B %d, %Y') %></p>
+        <p><strong>🕐 Time:</strong> <%= start_in_tz.strftime('%I:%M %p') %> - <%= end_in_tz.strftime('%I:%M %p') %> <%= start_in_tz.strftime('%Z') %></p>
         <% if @user.name.present? %>
           <p><strong>👤 With:</strong> <%= @user.name %></p>
         <% end %>

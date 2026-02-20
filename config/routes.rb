@@ -8,6 +8,8 @@ Rails.application.routes.draw do
     post :forgot_password
     post :reset_password
     get :me
+    patch :update
+    get :timezones
   end
 
   # OAuth routes
@@ -16,18 +18,36 @@ Rails.application.routes.draw do
 
   # API routes (protected by authentication)
   get "ai/chat"
-  resources :clients
+  resources :clients do
+    collection do
+      get :recent
+    end
+  end
   resources :calendars do
     collection do
-      get :lookup_by_email
+      get :primary
       get 'public/:token/availability', to: 'calendars#public_availability', as: :public_availability
       post 'public/:token/events', to: 'calendars#public_create_event', as: :public_create_event
       delete 'public/:token/events/last', to: 'calendars#public_delete_last_event', as: :public_delete_last_event
     end
-    get :availability, on: :member
+    member do
+      get :availability
+      get :token_stats
+      post :regenerate_token
+      post :revoke_token
+      post :extend_token
+    end
     resources :events, only: [ :index, :create ]
+    resources :blockouts, controller: 'calendar_blockouts'
   end
-  resources :events, only: [ :show, :update, :destroy ]
+  resources :events, only: [ :show, :update, :destroy ] do
+    collection do
+      get :dashboard
+      get :today
+      get :upcoming
+    end
+    resources :event_notes
+  end
 
   resources :notes do
     collection do
